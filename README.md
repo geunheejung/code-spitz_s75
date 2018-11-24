@@ -97,10 +97,14 @@ Json, Csv, Xml 서브 객체로 추상화 할 수 있는것이다.
 #1강 과제 
 ## 1. 예외의 지점을 찾고 수정하여 완성하라. json 데이터 실제로 적용해보면 에러 발생함.
 ## 2. 지금까지 전개한 객체협력모델에서는 여전히 문제가 남아있다. Info는 Data와 Renderer 사이에 교환을 위한 프로토콜인데 Data의 자식인 JsonData와 Renderer의 자식인 TableRenderer도 Info에 의존적인 상태이다. 이를 개선하라.
-
-
-
-
+### 1번
+- json 데이터에서 items의 6번째 index의 데이터를 보면 header와 갯수가 맞지 않음. header의 아이템 갯수는 5개인데 6번째 데이터는 갯수가 6개여서 Info에서 데이터에대한 벨리데이션 로직 중 header의 length와 item의 length를 비교하는 조건문이 존재하는데 
+  해당 조건문에 충족하지 않아 throw 가 발생함. 그래서 왜 6개인가 찾아보니 changed 데이터인데 한칸 늘어나면서 changed인지에 대한 인덱스에 해당되는 요소에는 값이 비어있고, 다음 인덱스로 밀려있어서 한칸씩 데이터가 밀렸었음.
+  그래서 만약 각 item의 length와 header의 length가 맞지 않고, 이전 랭킹과 다음 랭킹이 다른데 changed 인지에 대한 요소에 값이 비어있을 경우 해당 인덱스의 값을 splice로 지워서 밀려난 데이터를 맞춤.
+### 2번
+- Data와 Renderer 객체간에 data를 공유할 때 data에 대한 벨리데이션 정책을 한 곳에 모으기 위해서 또 Renderer에서 data를 그릴 때 data에 대한 벨리데이션을 그림을 그리는 Renderer가 하지 않고 특정한 V/O로 전해졌다는것만 체크하기 위해서 
+  Info 라는 객체를 만들어 해당 객체에서 data에 대한 벨리데이션 검증을 하는 역할을 맞아 Data와 Renderer 사이에 Info 라는 프로토콜을 맺었는데, 문제는 Renderer의 네이티브 부분을 해결하는 서브객체인 TableRenderer에서 V/O를 직접 접근하여 사용하는것과 V/O를 조작할 수 있는 문제가 발생한다. 왜 Data 객체와 Renderer 객체간의 프로토콜인 Info 객체를 Renderer 객체의 서브 객체인 TableRenderer 가 알고, 수정할 수 있는것인가 이로 인한 문제점은 우리가 Info 객체를 수정하면 그에 대한 여파가 TableRenderer까지 전달된다는것이다.
+  그래서 해결 방법은 Renderer에서 Info V/O를 바로 할당하지 않고 TableRenderer에서 V/O를 몰라도 그려야할 데이터를 사용할 수 있게 V/O의 프로퍼티를 Renderer의 필드로 할당함으로써 더이상 TableRenderer는 Info 객체를 몰라도 Renderer에서 제공해주는 데이터를 그리면 된다. 그러면 Info 객체가 바뀐다하더라도 Renderer만 수정하면 TableRenderer에는 여파가 없다.
 
 
 
