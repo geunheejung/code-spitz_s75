@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <section id="a"></section>
+  <section id="b"></section>
+  <section id="c"></section>
+  <script src="app.js"></script>
+  <script>  
+    const loader = new Github('geunheejung', 'nuber-server');
+
+    const img = new ImageLoader('#a');
+    const md = new MdLoader('#b');
+    const txt = new TxtLoader('#c');
+
+    loader.setParser(img);
+    loader.setParser(md);    
+    loader.setParser(txt);
+
+    
+  </script>
+</body>
+</html>
