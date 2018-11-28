@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <!-- 정의 시점 -->
+  <script src="./Github.js"></script>  
+  <script src="./img.js"></script>
+  <script src="./md.js"></script>
+  <script src="./Loader.js"></script>
+  <!-- 실행 시점 -->
+  <script>
+    const loader = new Loader(
+      'geunheejung', 
+      'code-spitz_s75'
+    );
+    
+    // 기존 if조건문을 값으로 바꿈으로써 case가 추가되어도 문을 추가하지 않아도 되게됨. 와우..
+    // 발생가능한 경우의 수를 값으로 기술
+    // Loader의 코드가 케이스가 추가되어도 변경이 없다.
+    loader.add('jpg,png,gif', img, el('#a'));
+    loader.add('md', md, el('#b'));
+
+    loader.load('xx.jpg');
+    loader.load('xx.md');
+  </script>
+</body>
+</html>

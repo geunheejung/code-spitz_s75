@@ -1,6 +1,7 @@
 const Github = class {
   constructor(id, repo) {
-    this._base = `https//api.github.com/repos/${id}/${repo}/contents/`;    
+    
+    this._base = `https://api.github.com/repos/${id}/${repo}/contents/`;    
   }
   load(path) {
     if (!this._parser) throw 'must be parser!';
@@ -11,6 +12,11 @@ const Github = class {
       delete Github[id];
       document.head.removeChild(s);
       const action = this._parser.action(path);
+
+      console.log(action);
+
+      debugger
+
       action(content); // 위임 부분      
     }
     const s = document.createElement('script');
@@ -26,44 +32,66 @@ const Github = class {
 }
 Github._id = 0;
 
-
-const Router = class extends Map {
-  constructor(ext, action, ...arg) {
+const Router = (_=>{  
+  const CHECK_RULE = (ext, action) => {
     if (!ext) throw 'invalid ext!';
-    if (!action) throw 'invalid action!';
-
-    const map = ext.split(',').map(v => ([ v, (v) => action(v, ...arg) ]));
-
-    super(map); 
+    if (!action) throw 'invalid action!';      
   }
 
-  getExt(ext) { return ext.split('.').pop(); }
-
-  hasIn(ext) {
-    return this.has(this.getExt(ext));
+  const getExt = (_ext, _action, ...arg) => {
+    const map = _ext.split(',').map(v => ([ v, (v) => _action(v, ...arg) ]));
+    return map;
   }
 
-  action(ext) {
-    const _action = this.get(this.getExt(ext));
-    if (!_action) return;
+  return class extends Map {
+    constructor(ext, action, ...arg) {
+      CHECK_RULE(ext, action);  
+      super(getExt(ext, action, ...arg)); 
+    }
+  
+    getExt(ext) { return ext.split('.').pop(); }
+  
+    hasIn(ext) {
+      return this.has(this.getExt(ext));
+    }
+  
+    action(ext) {
+      const _action = this.get(this.getExt(ext));
+      if (!_action) return;
+  
+      _action();
+    }
+  
+    add(ext, action, ...arg) {
+      CHECK_RULE(ext, action);
 
-    _action();
+      this.set(ext, (v) => action(v, ...arg));
+    }
   }
-}
+})();
 
 const Loader = class {
   constructor(_parent, ext, action, ...arg) {
-    Object.assign(this, { _parent: document.querySelector(_parent) });
-    
-    return new Router(
-      ext, 
-      (v, ...arg) => { 
-        if (!this._parent) throw 'invalid _parent!';
-        action(v, document.querySelector(this._parent), ...arg);
-      }, 
-      ...arg
-    );
-  }
+    Object.assign(this, { 
+      _parent: document.querySelector(_parent),
+      _router: null,
+    });
+
+    if (!this._router) {
+      Object.assign(this, { 
+        _router: new Router(
+          ext, 
+          (v, ...arg) => { 
+            if (!this._parent) throw 'invalid _parent!';
+            action(v, this._parent, ...arg);
+          }, 
+          ...arg
+        )
+      });
+
+      return this._router;
+    } else return this._router;
+  }  
 }
 
 const ImageLoader = class extends Loader {
@@ -76,8 +104,30 @@ const ImageLoader = class extends Loader {
   }
 }
 
-const loader = new Github('hikaMeng', 'codespitz75');
+const MdLoader = class extends Loader {
+  constructor(_parent) {
+    super(
+      _parent,
+      'md',
+      (v) => {
+        const d64 =v=>decodeURIComponent(atob(v).split('').map(c=>'%' + ('00' +c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        
+        return d64(v).split('\n').map(
+          v=>{
+            let i = 3;
+            while(i--){
+              if(v.startsWith('#'.repeat(i + 1))) return `<h${i + 1}>${v.substr(i + 1)}</h${i + 1}>`;
+            }
+            return v;
+          }).join('<br>');
+      }
+    )
+  }
+}
+
+const loader = new Github('geunheejung', 'nuber-client');
 
 const img = new ImageLoader('#a');
+const md = new MdLoader('#b');
 loader.setParser(img);
-loader.load('xx.png');
+loader.setParser(md);
