@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <img id="a" />
+  <div id="b" />
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>//util
+    const sel =(v, el = document)=>el.querySelector(v);
+    const el =(tag, ...attr)=>{
+      const el = document.createElement(tag);
+      for(let i = 0; i < attr.length;){
+      const k = attr[i++], v = attr[i++];
+        if(typeof el[k] == 'function') el[k](...(Array.isArray(v) ? v : [v]));
+        else if(k[0] == '@') el.style[k.substr(1)] = v;	
+        else el[k] = v;
+      } 
+      return el;
+    };
+    const d64 =v=>decodeURIComponent(atob(v).split('').map(c=>'%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    </script>
+<script>
+const JsonpListener = class {
+  jsonpLoaded(v) { throw 'override'; }
+}
+const jsonp = (url, listener) => {
+  if (!(listener instanceof JsonpListener)) throw 'invalid listener';
+
+  const s = document.createElement('script');
+  const id = jsonp._id++;
+  const f = jsonp[`callback${id}`] = v => {
+    delete jsonp[`callback${id}`];
+    document.head.removeChild(s);
+    listener.jsonpLoaded(v);
+  }
+  s.src = `${url}?callback=Github.${id}`;
+  document.head.appendChild(s);
+}
+
+jsonp._id = 0;
+
+const GithubLoader = class extends JsonpListener {
+  constructor(parser, arg) {
+    super();
+    if (!(parser instanceof Parser)) throw 'invalid parser';
+    this._parser = parser;
+    this._arg = arg;    
+  }
+  jsonpLoaded({ data: { content } }) {    
+    this._parser.parse(content, ...this.arg);
+  }
+}
+
+const Github = class {
+  constructor(id, repo) {
+    this._base = `https://api.github.com/repos/${id}/${repo}/contents/`;
+  }
+  set parser(v) {
+    if (!(v instanceof Parser)) throw 'invalid parser';
+    this._parser = v;
+  }
+  load(path, ...arg) {
+    jsonp(`${this._base}${path}`, new GithubLoader(this._parser, arg));
+  }
+}
+
+const Parser = class {
+  parse(content, ...arg) {
+    throw 'override';
+  }
+}
+const ImagedParser = class extends Parser {
+  parse(content, el, ...arg) {
+    sel(el).src = 'data:text/plain;base64,' + content;
+  }
+}
+const MdParser = class extends Parser {
+  parse(content, el, ...arg) {
+    sel(el).innerHTML = marked(d64(content));
+  }
+}
+const github = new Github('geunheejung', 'nuber-client');
+github.parser = new ImagedParser();
+github.load('einBig.png', '#a');
+github.parser = new MdParser();
+github.load('README.md', '#b');
+</script>
+</body>
+</html>

@@ -303,3 +303,301 @@ Loader도 개조해야함
 서브 Loader의 부모 클래스를 Github 클래스가 인식.
 그리고 서로 계약관계
 
+-------
+# 3강
+의존성이 없는 보다 작은 엔티티부터 파악하는것이 더 쉽다.
+예를들어 List와 Task가 있을 때 List는 Task에 의존성이 있기 때문에 의존성이 없는 Task를 먼저 파악하는것이 더 쉽다. 
+
+
+00:00 ~ 14:17
+/*
+Code를 작성할 때 사용하는 부분부터 작성한다.
+이런게 있으면 참 좋을탠데..
+난 이런 프로그램을 만들겠어와 같이
+코드를 소비하는 부분을 작성한다.
+```
+const list1 = new TaskList('비사이드');
+last1.add('지라설치');
+list1.add('지라클라우드접속');
+
+const list2 = new TaskList('s75');
+list2.add('2강 답안 작성');
+list2.add('2강 교안 작성');
+
+console.log(list1.byTitle());
+console.log(list2.byDate());
+```
+위 코드처럼 사용하는 부분만 작성해도 70%는 완성한것이다.
+
+Class나 함수를 보강할 생각은 나중에 해도된다.
+무조건 코드를 소비할 때 문제가 있나,
+빠진 부분이 있나 
+이것부터 체크해야한다.
+허술한 부분,
+생략된 부분
+위 과정이 API 설계이다.
+
+프로그래밍은 이름이 전부이다.
+그럼 왜 list.add로 이름을 지었을까 addTask가 아닌?
+이름을 짓는것도 상향식과 하향식이 있다.
+상향식은 이름을 크게 짓는다.
+처음부터 이름을 구체적으로 짓기에는 나중에 역할과 이름이 안맞을수있다.
+그러므로 처음에는 이름을 크게 짓고,
+나중에 역할에 맞게 이름을 구체적으로 지어주면된다.
+*/
+
+14:17 ~ 28:17
+/**
+ * stateGroup(boolean): 완료된것들과 완료안된것들끼리 묶을지, 상관없이 전체를 정렬할것인지
+ * title(string): 각 Task 제목
+ * 
+ */
+
+const taskSort = {
+  // sort함수가 sorting하는지에 대한 지식을 sort함수 자체가 가질 수 없다.
+  /*
+    캡슐화에 위배되기 때문이다.
+    즉 sort에 대한 권한은 Task 클래스가 제공해주고, 사용하는쪽에서는 단순히 sort함수를 호출하는 역할만 하고
+    실제 sorting이 어떻게 될지에 대해서는 Task에게 제공받는다.
+    sort함수가 직접 정렬을 할려해도, Task 객체의 내장을 알아야하기에, 결국 Task 객체가 제공해주는것을 사용할 수 밖에 없다.        
+    대부분의 API는 본인의 내장을 까지 않고, 캡슐화를 제공하기 위해서
+    아래 title, date를 보면 Task에 대한 상세한 지식이 없고, 그에 대한 지식은 안에 캡슐화 되어있다.
+  */
+  title: (a, b) => a.sortTitle(b),
+  date: (a, b) => a.sortDate(b),
+}
+
+const TaskList = class {
+  constructor(title) {
+    if (!title) throw 'invalid title';
+    this._title = title;
+    this._list = [];
+  }
+  
+  add(title, date = Date.now()) {
+    this._list.push(new Task(title, date));
+  }
+  remove(task) {
+    const list = this._list;
+    if (list.includes(task)) list.splice(list.indexOf(task), 1);    
+  }
+  byTitle(stateGroup = true) { return this._getList('title', stateGroup); }
+  byTitle(stateGroup = true) { return this._getList('date', stateGroup); }
+  
+  _getList(sort, stateGroup) {
+    // 사본 정책: 참조를 보낼 경우 데이터가 변경될 수 있기에, 복사해서 전달해줌.
+    const list = [...this._list];
+    const s = taskSort[sort];
+    return !stateGroup 
+      ? list.sort(s) 
+      : [
+        ...list.filter(v => !v.isComplete()).sort(s),
+        ...list.filter(v => v.isComplete()).sort(s)
+      ];
+  }
+}
+
+const Task = class {
+  constructor(title, date) {
+    if (!title) throw 'invalid title';
+    this._title = title;
+    // _date와 _isComplete라는 엔티티가 있을거란것을 파악해야한다.
+    this._date = date;
+    this._isComplete = false;
+  }
+  isComplete() { return this._isComplete; }
+  // toggle로 check, unCheck동작을 캡슐화
+  /*
+    객체지향에서 은닉과 캡슐화가 있는데, 은닉은 말그대로 감추는것.
+    그러나 캡슐화는 외부에게 내부의 행동을 추상화해서 제공하는것.    
+    ex) ATM기기
+    이게 비헤이비어이다.
+  */
+  toggle() { this._isComplete = !this.isComplete; } 
+  sortTitle(task) {
+    return this._title > task._title;
+  }
+  sortDate(task) {
+    return this._date > task._date;
+  }
+}
+
+/*
+엔티티를 파악할 때 요령은 최대한 의존성이 없는것부터 파악하자.
+List와 Task에서 먼저 파악할 것은 Task이다.
+*/
+
+28:17 ~ 40:37
+/**
+ * stateGroup(boolean): 완료된것들과 완료안된것들끼리 묶을지, 상관없이 전체를 정렬할것인지
+ * title(string): 각 Task 제목
+ * 
+ */
+
+const taskSort = {
+  // sort함수가 sorting하는지에 대한 지식을 sort함수 자체가 가질 수 없다.
+  /*
+    캡슐화에 위배되기 때문이다.
+    즉 sort에 대한 권한은 Task 클래스가 제공해주고, 사용하는쪽에서는 단순히 sort함수를 호출하는 역할만 하고
+    실제 sorting이 어떻게 될지에 대해서는 Task에게 제공받는다.
+    sort함수가 직접 정렬을 할려해도, Task 객체의 내장을 알아야하기에, 결국 Task 객체가 제공해주는것을 사용할 수 밖에 없다.        
+    대부분의 API는 본인의 내장을 까지 않고, 캡슐화를 제공하기 위해서
+    아래 title, date를 보면 Task에 대한 상세한 지식이 없고, 그에 대한 지식은 안에 캡슐화 되어있다.
+  */
+  title: (a, b) => a.sortTitle(b),
+  date: (a, b) => a.sortDate(b),
+}
+
+const TaskList = class {
+  constructor(title) {
+    if (!title) throw 'invalid title';
+    this._title = title;
+    this._list = [];
+  }
+  
+  byTitle(stateGroup = true) { return this._getList('title', stateGroup); }
+  byTitle(stateGroup = true) { return this._getList('date', stateGroup); }
+
+  add(title, date = Date.now()) {
+    this._list.push(new Task(title, date));
+  }
+  remove(task) {
+    const list = this._list;
+    if (list.includes(task)) list.splice(list.indexOf(task), 1);    
+  }
+    
+  _getList(sort, stateGroup) {
+    // 사본 정책: 참조를 보낼 경우 데이터가 변경될 수 있기에, 복사해서 전달해줌.
+    const list = [...this._list];
+    const s = taskSort[sort];
+    /*
+    Task객체의 집합을 .map으로 loop돌면서 각각의 task객체의 _getList 메소드를 호출해주었다.
+    즉 Task 엔티티하나하나에 대한 표현을 TaskList가 정하는것이 아니라
+    loop를 돌면서 현재 자기 자신을 어떻게 표현할지 Task._getList 메소드를 호출해줌으로써 위임했다.    
+    그럼 왜 TaskList에서 Task엔티티에 대한 표현을 Task가 알아야하나?
+    Task객체가 가지고있는 필드값들은 전부 private접근자이기에 TaskList는 Task에 대한 형태를 정할 수 없다.
+    그러므로 Task가 자기자신의 Private 필드값으로 형태를 정하는것은 바른 지식이다.
+    List가 Task를 정할려면 Task의 내장을 전부 알아야한다. (내부자 거래)
+    TaskList와 Task간의 거래.
+    */
+    const sortedTaskList = !stateGroup 
+    ? list.sort(s) 
+    : [
+      ...list.filter(v => !v.isComplete()).sort(s),
+      ...list.filter(v => v.isComplete()).sort(s)
+    ];
+    /*Task: { task: Task, sub: { Task } }*/
+    return sortedTaskList.map(task => task._getList());
+  }
+}
+
+const Task = class {
+  constructor(title, date) {
+    if (!title) throw 'invalid title';
+    this._title = title;
+    // _date와 _isComplete라는 엔티티가 있을거란것을 파악해야한다.
+    this._date = date;
+    this._isComplete = false;
+    this._list = [];
+  }
+  // TaskList 클래스의 add,remove,_getList 행위가 일치하기에 TaskList 클래스의 메소드가 복사되어서 왔다.(행동이 똑같)
+  add(title, date = Date.now()) {
+    this._list.push(new Task(title, date));
+  }
+  remove(task) {
+    const list = this._list;
+    if (list.includes(task)) list.splice(list.indexOf(task), 1);    
+  }
+    
+  _getList(sort, stateGroup) {
+    // 사본 정책: 참조를 보낼 경우 데이터가 변경될 수 있기에, 복사해서 전달해줌.
+    const list = [...this._list];
+    const s = taskSort[sort];
+    return {
+      task: this,
+      sub: !stateGroup 
+      ? list.sort(s) 
+      : [
+        ...list.filter(v => !v.isComplete()).sort(s),
+        ...list.filter(v => v.isComplete()).sort(s)
+      ],
+    }
+  }
+
+  isComplete() { return this._isComplete; }
+  // toggle로 check, unCheck동작을 캡슐화
+  /*
+    객체지향에서 은닉과 캡슐화가 있는데, 은닉은 말그대로 감추는것.
+    그러나 캡슐화는 외부에게 내부의 행동을 추상화해서 제공하는것.    
+    ex) ATM기기
+    이게 비헤이비어이다.
+  */
+  toggle() { this._isComplete = !this.isComplete; } 
+  sortTitle(task) {
+    return this._title > task._title;
+  }
+  sortDate(task) {
+    return this._date > task._date;
+  }
+}
+
+/*
+엔티티를 파악할 때 요령은 최대한 의존성이 없는것부터 파악하자.
+List와 Task에서 먼저 파악할 것은 Task이다.
+*/
+
+const list1 = new TaskList('비사이드');
+last1.add('지라설치');
+list1.add('지라클라우드접속');
+
+const list2 = new TaskList('s75');
+list2.add('2강 답안 작성');
+list2.add('2강 교안 작성');
+
+// subTask에 대해서 코드를 소비하는쪽을 먼저 작성함.
+/*
+그러면서 데이터 구조가 task: { task, sub: [] } 와 같이 생겼을거라는
+모델링에도 성공함. 즉 코드를 소비하는부분과, 모델링을 먼저 달성하고 실제 구현에 들어가야한다.
+데이터가 Optioanl하게 될 때는 모두다 존재할것이라 생각하고 일관성있게 표현해야한다.
+그래야 조건문이 사라진다. 그러므로 일단 모든 Task는 task란 속성과 sub란 속성이 있을거라고 가정.
+*/
+const list = list2.byDate();
+list[1].task.add('코드정리');
+list[1].task.add('다이어그램정리');
+
+console.log(list2.byDate()[1].sub);
+
+위 단계까지는 거의 하드코딩과 같다. 왜냐하면 Task의 깊이를 2단계까지만 바라봤기 때문이다.
+
+# 3단 if는 사람이 케어할 수 있는 수준을 넘어선다.
+무조건 중간에 이빨이 빠진다.
+ex) if (a && b) === if (a) { if(b) {  } }
+
+# 컴포지트 패턴의 핵심은?
+함수 이름이 똑같은것을 불러서 문제를 해결한다.
+이름
+getResult가 getResult를 부른다.
+근데 자기 자신의 메소드를 호출한것이 아닌,
+item에서는 자기 자신을 호출하고,
+children에서는 자기 자식들의 getResult을 호출한다.
+함수의 이름이야말로 우리가 리커시브한 재귀를 일으킬 수 있는 핵심
+getResult -> getResult를 부른것으로 부터 컴포지트 패턴이라는것을 알 수 있다.
+
+# 컴포지트는 전파된다.
+데이터를 컴포지션이면, 데이터를 소비하는측도 컴포지션으로 되어있다.
+ex) Tree
+서버 개발자가 json구조를 컴포지션형태로 반환해주면, 소비하는측도 컴포지션으로 되어야한다.
+
+# 시퀀스 다이어그램을 그릴 때 처음에는 생각대로 그리자.
+
+# 증분 렌더는 행위의 합으로 화면이 그려진다.
+ex) Click 3번 후 모달을 열었을 때
+행동으로 결합해서 렌더링을 하면 다음에 다시 그 상황을 복원하려하면 똑같은 행동을 반복해줘야한다.
+그에 반해 모델 렌더를 할 경우 Data에 기반되기때문에 단순히 Data를 그려주기만 하면된다.
+
+# 도입함수와 컴포지션 함수
+도입함수는 초기화해준다.
+
+#과제
+1. 버그 찾기.
+2. console Renderer 찾기.

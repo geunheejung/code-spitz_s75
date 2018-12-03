@@ -1,3 +1,5 @@
+const el = v => document.querySelector(v);
+
 const _parser = (v) => {
   const d64 =v=>decodeURIComponent(atob(v).split('').map(c=>'%' + ('00' +c.charCodeAt(0).toString(16)).slice(-2)).join(''));
   return d64(v).split('\n').map(
@@ -9,6 +11,8 @@ const _parser = (v) => {
       return v;
     }).join('<br>');
 }
+
+// jspnp loader
 
 const Github = class {
   constructor(id, repo) {
@@ -53,8 +57,9 @@ const Router = (_=>{
 
   return class extends Map {
     constructor(ext, action, ...arg) {
-      CHECK_RULE(ext, action);  
-      super(getExt(ext, action, ...arg)); 
+      CHECK_RULE(ext, action);
+      
+      super([[ext, (v) => action(v, ...arg)]]);
     }
   
     getExt(ext) { return ext.split('.').pop(); }
@@ -79,57 +84,89 @@ const Router = (_=>{
 })();
 
 const Loader = class {
-  constructor(_parent, ext, action, ...arg) {
-    Object.assign(this, { 
-      _parent: document.querySelector(_parent),
-      _router: null,
-    });
-
-    if (!this._router) {
-      Object.assign(this, { 
-        _router: new Router(
-          ext, 
-          (v, ...arg) => { 
-            if (!this._parent) throw 'invalid _parent!';
-            action(v, this._parent, ...arg);
-          }, 
-          ...arg
-        )
-      });
-
-      return this._router;
-    } else return this._router;
+  constructor() {
+    Object.assign(this, { routerTable: new Map })
   }  
-}
 
-const ImageLoader = class extends Loader {
-  constructor(_parent) {
-    super(
-      _parent,
-      'jpg,gif,png',
-      (v, parent, ...arg) => parent.src = 'data:text/plain;base64,' + v,
-    );
+  addRepo(repoKey, gitId, repoName) {
+    if (!repoKey || !gitId || !repoName) throw 'invalid params!';    
+    const { routerTable } = this;  
+
+    if (routerTable.has(repoKey)) throw '이미 해당 레퍼지토리가 등록되어 있습니다.';
+
+    const _github = new Github(gitId, repoName);
+    const subRouterTable = new Map;
+    routerTable.set(repoKey, [_github, subRouterTable]);
+  }
+
+  addRouter(repoKey, ext, strategyObj, parent, ...arg) {
+    if (!repoKey || !parent) throw 'invalid parmas!';
+    if (!(strategyObj instanceof StrategyObj)) throw 'invalid strategyObj params!';
+
+    const { routerTable } = this;
+  
+    const [ _, subRouterTable ] = routerTable.get(repoKey);
+  
+    const action = (v, ...arg) => strategyObj.action(v, parent, ...arg);
+
+    ext.split(',').forEach(v => {
+      subRouterTable.set(v, new Router(v, action, ...arg));
+    });
+  }
+
+  load(repoKey, path) {
+    const { routerTable } = this;
+    const _routerTable = routerTable.get(repoKey);
+    if (!_routerTable) throw 'addRepo로 githubRouterTable을 등록해주세요.';
+    const [ _github, subRouterTable ] = _routerTable;
+
+    const _path = path.split('.').pop();
+    const parser = subRouterTable.get(_path);
+
+    _github.setParser(parser);
+    _github.load(path);
   }
 }
 
-const MdLoader = class extends Loader {
-  constructor(_parent) {
-    super(
-      _parent,
-      'md',
-      (v, parent, ...arg) => {
-        parent.innerHTML = _parser(v);       
-      }
-    )
+const StrategyObj = class {
+  constructor() {}
+  action(v, parent, ...arg) {
+    if (!parent) throw 'invalid element';
+    this._action(v, parent, ...arg);
+  }
+
+  _action() {
+    throw 'must be overried!';
   }
 }
 
-const TxtLoader = class extends Loader {
-  constructor(_parent) {
-    super(
-      _parent,
-      'txt',
-      (v, parent, ...arg) => parent.innerHTML = _parser(v),
-    )
+const ImageLoader = class extends StrategyObj {
+  _action(v, parent, ...arg) {
+    parent.src = 'data:text/plain;base64,' + v;
   }
 }
+
+const MdLoader = class extends StrategyObj {
+  _action(v, parent, ...arg) {
+    parent.innerHTML = _parser(v);       
+  }
+}
+
+const TxtLoader = class extends StrategyObj {
+  _action(v, parent, ...arg) {
+    parent.innerHTML = _parser(v);       
+  }
+}
+
+const loader = new Loader;
+const img = new ImageLoader;
+const md = new MdLoader;
+loader.addRepo('nuber-client', 'geunheejung', 'nuber-client');
+loader.addRouter('nuber-client', 'jpg,png,gif', img, el('#a'));
+loader.addRouter('nuber-client', 'md', md, el('#b'));
+
+loader.addRepo('nuber-server', 'geunheejung', 'nuber-server');
+loader.addRouter('nuber-server', 'md', md, el('#a'));
+
+loader.load('nuber-client', 'README.md');
+loader.load('nuber-server', 'README.md');

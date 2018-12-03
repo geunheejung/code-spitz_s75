@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+<main id="todo"></main>
+
+<script src="util.js"></script>
+<script src="Task.js"></script>  
+<script src="TaskList.js"></script>  
+<script src="TaskItem.js"></script>
+<script src="Renderer.js"></script>
+<script>
+
+
+/*
+엔티티를 파악할 때 요령은 최대한 의존성이 없는것부터 파악하자.
+List와 Task에서 먼저 파악할 것은 Task이다.
+*/
+
+// Task의 깊이가 2단계까지만 커버할 경우
+// const list1 = new TaskList('비사이드');
+// last1.add('지라설치');
+// list1.add('지라클라우드접속');
+
+// const list2 = new TaskList('s75');
+// list2.add('2강 답안 작성');
+// list2.add('2강 교안 작성');
+
+// // subTask에 대해서 코드를 소비하는쪽을 먼저 작성함.
+// /*
+// 그러면서 데이터 구조가 task: { task, sub: [] } 와 같이 생겼을거라는
+// 모델링에도 성공함. 즉 코드를 소비하는부분과, 모델링을 먼저 달성하고 실제 구현에 들어가야한다.
+// 데이터가 Optioanl하게 될 때는 모두다 존재할것이라 생각하고 일관성있게 표현해야한다.
+// 그래야 조건문이 사라진다. 그러므로 일단 모든 Task는 task란 속성과 sub란 속성이 있을거라고 가정.
+// */
+// const list = list2.byDate();
+// list[1].task.add('코드정리');
+// list[1].task.add('다이어그램정리');
+
+// console.log(list2.byDate()[1].sub);
+
+const list1 = new TaskList('s75');
+const item1 = new TaskItem('3강교안작성');
+list1.add(item1);
+
+const sub1 = new TaskItem('코드정리');
+item1.add(sub1);
+
+const subsub1 = new TaskItem('subsub1');
+sub1.add(subsub1);
+
+list1.getResult(Task.title);
+
+const todo = new DomRenderer(list1, sel('#todo'));
+todo.render();
+
+/* getResult를 했을때의 결과. (모델링)
+{
+  item: title,
+  children: [
+    item: taskItem(title),
+    children: [
+      item: taskItem(title),
+      children: [
+        {
+          item: taskItem(title),
+          children: []
+        }
+      ]
+    ]
+  ]
+}
+*/
+</script>  
+</body>
+</html>
