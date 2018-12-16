@@ -1,0 +1,55 @@
+Task
+	- add(task)
+		- 인자로 받은 task의 type을 체크한 다음 _list에 push한다.
+	- remove(task)
+		- 인자로 받은 task와 매칭되는 index를 찾아서 splice해준다.
+	- getResult(sort, stateGroup)
+		- 정렬 기준인 sort와 완료된 요소, 미완료된 요소를 나눠서 정렬할지, 상관없이 정렬할지에 대한 stageGroup
+		- 외부에서 현재 Task 구조를 그릴 수 있도록 제공해준다.
+			{
+				item: 현재 Task,
+				children: 현재 Task의 자식 List
+			}
+		1. 현재 Task의 _list 필드를 loop돌면서 각각의 자식 TaskItem들의 getResult메소드를 호출하는데,
+		2. getResult는 TaskItem의 부모 Class인 Task의 메소드이며, 호출되면
+		3. 현재 TaskItem을 item으로 하고, 현재 TaskItem의 부모 클래스의 _list field에 자식 TaskItem들이 존재할 경우
+		4. 다시 각각의 TaskItem의 superClass인 Task.getResult를 호출하여서 계속 재귀적으로 더이상 자식 TaskItem이 		   없을때까지 호출한다.
+		5. 더이상 자식 TaskItem이 없을 경우 현재 Task의 getResult Stack이 호출되면서 스택에서 사라지고,
+		6. 바로 이전 TaskItem의 Task의 getResult가 스택에서 호출되면서 값을 반환하고 다시 이전 스택으로 호출되면서
+	   	만약 Tree형태라 하면
+    	더이상 자식 Tree가 없을때까지 내려간 다음, 자식 Tree가 없을 경우 현재 자식 Tree부터 차근차근 getResult가 		호출되면서 가장 Root의 getResult까지 올라와 Root Task의 getResult가 호출되면 Tree의 데이터구조를 외부에서 		사용하기 편하게 그리고 Tree의 내장을 몰라도 getResult라는 캡슐화된 api를 호출함으로써 외부에서 Tree의 데이터 		구조를 얻게된다.
+	
+	아래 메서드들은 Task를 상속받는 TaskItem과 TaskList가 구현해야할 template Hook 메소드이며,
+	이렇게 사용하는 이유는 isComplete이나, sortTitle, sortDate에 대한 동작이나, 지식들은 각각의 TaskList와 TaskItem의 	지식이며, 이러한 동작에 필요한 필드들 또한 Private필드이다.
+	즉 외부에 데이터를 제공할 때 컴포지션 동작은 부모인 Task 객체가 하지만,
+	각각의 세부 TaskItem, TaskList에 대한 세부적인 표현은 자식들이 해야한다.
+	- isComplete
+	- sortTitle
+	- sortDate
+	
+TaskList
+	- isComplete()
+		- TaskList는 complete에 대한 필드가 없기에 구현 X
+		- sortTitle()
+		- sortDate()
+			- 자기자신을 반환함으로 정렬에서 무조건 우선적으로 되도록 한다.
+
+TaskItem
+	- isComplete()
+		- 자기 자신의 private _isComplete 속성을 반환해준다.
+	- sortTitle(task)
+	- sortDate(task)
+		- 자기 자신을 어떻게 정렬해야하는지에 대한 지식을 캡슐화하여 외부에 api로 제공해준다.
+
+Renderer
+	- add(parent, title, date)
+	- remove(parent, task)
+	- toggle(task)
+	- render
+	- _render(base, parent, Task, depth)
+	
+DomRenderer
+	- add
+	- remove
+	- toggle
+

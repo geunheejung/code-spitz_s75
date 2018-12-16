@@ -1,0 +1,157 @@
+
+/*
+Loader
+  RouterTable
+    repoKey: RouterTable
+      key(확장자): action
+
+
+
+  addRepo(repoKey, gitId, repoName)
+    1. 라우팅 테이블에 인자로 받은 repoKey가 존재하는지 체크한다.
+      - 존재할 경우 -> return;
+    2. 인자로 받은 repoName과 gitId로 Github 클래스의 인스턴스 객체를 만들어 낸다.
+    3. repoKey를 key로하고, (2)에서 만들어낸 github 인스턴스 객체를 value로 하여 라우팅 테이블에 저장한다.    
+  addRouter(repoKey, ext, 전략객체, parent)
+    1. repo 라우팅 테이블에 repoKey값이 존재하는지 체크한다.
+      - 존재하지 않을 경우 return;
+    2. repo 라우팅 테이블에 repoKey를 key로 하여 github 인스턴스 객체를 찾는다.
+    3. 인자로 받은 ext가 존재하는지 체크한다.
+      - 존재할 경우
+        - ext를 key로 하고, 전략 객체를 action으로 해서 parser를 생성한다.
+      - 존재하지 않을 경우
+        - 전략 객체를 parser로 할당한다.
+    4. (2)에서 구한 github인스턴스에 setParser로 parser를 등록해준다.
+  load(repoKey, path)
+      1.라우팅 테이블의 repoKey로 라우팅 테이블을 가져온 다음
+      2. (1)에서 구한 라우팅 테이블이 존재할 경우 2번째 인자로 받은 path로 github.load 를 호출한다.      
+
+*/
+
+
+이슈
+
+
+addReop에서 값을 github인스턴스로 받으면 ext를 여러개를 등록할 때 어떻게 해야하지?
+
+github인스턴스는 단순히 path를 받아서 매칭될 경우 매칭되는 action을 호출하면서 결과값을 인자로 보내주는건데?
+
+음..
+
+addRepo를 할 때마다 인자로 받은 gitId와 repoName만의 인스턴스를 만들어줘야한다.
+
+repoKey를 key로하고,
+github인스턴스를 map으로 만드는데
+이때 github인스턴스의 value로 각각의 addRouter동작에 의해 인자로 받은 ext를 배열 형태로 유지해주고,
+load를 요청하면서 repoKey와 path값을 보내주면
+repoKey로 접근해서 value를 얻어내서,
+얻어낸 value에 인자로 받은 path가 매칭되면
+
+즉 데이터 구조를
+
+[
+	repoKey => map[
+		githubInstance => map[
+			0 ext => action
+			1 ext => action
+			2 ext => action
+		]
+	]
+]
+
+1. addRepo를 호출하면서 인자로 받은 repoKey로 위 데이터 구조에 값이 존재하는지 체크
+	- TRUE할 경우
+		- 값이 이미 존재한다고 알려주고 throw 
+	- FALSE 할 경우 
+		- (2) 으로 진행
+2. repoKey를 key로하고, 배열을 만드는데 첫 번째 인덱스에 github인스턴스를 넣고, 그 이후의 인스턴스에 map을 셋팅해준 다음 해당 map은 ext와 action으로 이루어질 router table이다.
+
+1. addRouter를 하면서 repoKey를 인자로 받으면
+2. routerTable에 repoKey가 존재하는지 체크한다.
+	- TRUE 할 경우
+		1. repoKey로 현재 repoKey와 매칭되는 라우팅 테이블을 얻어낸 다음
+		2. 라우팅테이블의 value에서 2번째 인덱스에 저장된 라우터 테이블에 이미 ext를 key로 한 값이 존재하는지 체크한다.
+			- TRUE 할 경우
+				- throw 이미 존재하는 조건입니다. throw한다.
+			- FALSE 할 경우
+				1. 인자로 받은 ext를 key로하고, action을 value로 하여 저장해준다.
+
+
+
+
+
+Github
+	- setParser
+	- load
+
+Router
+
+Loader
+	- addRepo
+	- addRouter
+	- load
+
+ImgLoader
+
+MdLoader
+
+Loader에서 load메서드가 호출되면 현재 라우팅 테이블에서 인자로 받은 key에 매칭되는 서브 라우팅 테이블을 얻어온 다음 
+그 얻어온 서브 라우팅 테이블을 Github 클래스에게 setParser로 등록해주면 
+setPerser로 등록하면서 type이 올바른지 체크할테고,
+type이 올바를 경우 load를 호출하면서 
+2번째 인자로 받은 path를 넘겨주면
+Github클래스와 Loader클래스 사이에 Router라는 프로토콜은 유지된다.
+
+그럼 Router 프로토콜을 수정해줘야함.
+
+
+
+
+
+
+
+
+
+
+Github 
+	- github계정과 긁어오길 원하는 레퍼지토리 이름을 인자로 받아
+	- 프로토콜을 준수한 parser의 action메서드를 호출하면서 얻어온 jsonp 데이터를 반환해준다.	
+	
+Router
+	- Loader가 Github에게 라우팅 테이블을 전달해주는데 이때 라우팅 테이블이 올바른지에 대해 검증하는 프로토콜.
+	- path에 대한 조건 ext와 그 조건에 매칭될 경우에 대한 action을 관리한다.
+
+Loader
+	- Router 인스턴스를 만들어서 Github에게 전달해주는 역할을 한다.
+	- 라우팅 테이블을 관리한다.
+
+StretgyObj
+
+ImgLoader
+
+MdLoader
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	

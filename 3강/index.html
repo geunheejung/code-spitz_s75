@@ -5,9 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Document</title>
+  <style>
+    todoitem {
+      width: 150px;
+      height: 150px;
+    }
+  </style>
 </head>
 <body>
 <main id="todo"></main>
+
+<TodoItem data-title="hello"></TodoItem>
+<template>
+  d
+</template>
 
 <script src="util.js"></script>
 <script src="Task.js"></script>  
@@ -45,19 +56,27 @@ List와 Task에서 먼저 파악할 것은 Task이다.
 // console.log(list2.byDate()[1].sub);
 
 const list1 = new TaskList('s75');
-const item1 = new TaskItem('3강교안작성');
-list1.add(item1);
 
-const sub1 = new TaskItem('코드정리');
-item1.add(sub1);
+const conList = new TaskList('이디야');
 
-const subsub1 = new TaskItem('subsub1');
-sub1.add(subsub1);
+const depthA = new TaskList('따뜻한 메뉴');
+const depthB = new TaskList('차가운 메뉴');
+const depthC = new TaskList('미지근한 메뉴');
 
-list1.getResult(Task.title);
+conList.add(depthA);
+conList.add(depthB);
+conList.add(depthC);
 
-const todo = new DomRenderer(list1, sel('#todo'));
-todo.render();
+const c1 = new TaskItem('아메리카노');
+const c2 = new TaskItem('카페라떼');
+
+depthA.add(c1);
+depthB.add(c2);
+
+const dom = new DomRenderer(conList, sel('#todo'));
+const con = new ConsoleRenderer(conList);
+dom.render();
+con.render();
 
 /* getResult를 했을때의 결과. (모델링)
 {

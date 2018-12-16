@@ -1,24 +1,17 @@
-const DomRenderer = class {
+const Renderer = class {
   constructor(list, parent) {
-    this._parent = parent;
+    this._parent = parent;   
     this._list = list;
     this._sort = Task.title;
   }
-
   add(parent, title, date) {
     parent.add(new TaskItem(title, date));
-    // Model Render : Data만 바꾸고 화면을 다 지우고 다시 갱신하는것.
-    // 다시 그리고 지우는것에 대한 성능은 그림 그리는곳에서 알아서 처리하도록. ex) virtual Dom
-    // 모델의 변경사항을 업데이트만 한다.
-    // 다지우고 다시 그릴때의 장점은 언제나 화면은 Data의 반영이기에, 화면에서의 예외가 없다.
     this.render();
   }
-
   remove(parent, task) {
     parent.remove(task);
     this.render();
   }
-
   toggle(task) {
     if (task instanceof TaskItem) {
       task.toggle();
@@ -26,9 +19,59 @@ const DomRenderer = class {
     }
   }
 
-  render(){
+  render() {
+    this._clear();        
+    this._render(
+      this._parent, 
+      this._list, 
+      this._list.getResult(this._sort), 
+      0
+    );
+  }
+
+  _clear() { throw 'overrid!'; }
+}
+
+const TodoItem = class extends HTMLElement {
+  constructor(item, task) {
+    super();
+    Object.assign(this, { _item: item, _task: task });
+
+    const shadow = this.attachShadow({ mode: 'open' });
+    const { _title, _date, isComplete } = this._item;
+    const h3 = document.createElement('h3');
+    h3.innerHTML = this.getAttribute('data-title');
+    const date = document.createElement('time');
+    date.innerHTML = this.getAttribute('data-date').toString();
+    date.setAttribute('datetime', this.getAttribute('data-date').toString());
+    const button = createElement('button');
+    button.innerHTML = this.getAttribute('data-isToggle') ? 'progress' : 'complete';
+    button.addEventListener('click', () => {
+      this._task.toggle(_item);
+    });
+    
+    const sec = document.createElement('section');
+
+    sec.appendChild(h3);
+    sec.appendChild(date);
+    sec.appendChild(button);
+
+    console.log(sec);
+
+    debugger
+    shadow.appendChild(document.createElement('h3').innerHTML ='dasohjdpas');
+  }
+}
+
+const DomRenderer = class extends Renderer {
+  constructor(list, parent) {
+    super(list, parent);
+  }
+
+  _clear() {  
     const parent = this._parent;
     parent.innerHTML = '';
+
     parent.appendChild('title,date'.split(',').reduce((nav,c)=>(
       nav.appendChild(
         el(
@@ -47,7 +90,6 @@ const DomRenderer = class {
       el('nav')
       )
     );
-    this._render(parent, this._list, this._list.getResult(this._sort), 0);
   }
 
   _render(
@@ -56,11 +98,10 @@ const DomRenderer = class {
     {item, children}, 
     depth
   ) {
-    const temp = [];
-    base.style.paddingLeft = depth * 10 + 'px';
+    const temp = [];    
     if(item instanceof TaskList){
       temp.push(el('h2', 'innerHTML', item._title));
-    } else{
+    } else{      
       temp.push(
         el(
           'h3', 
@@ -75,7 +116,7 @@ const DomRenderer = class {
           'datetime', 
           item._date.toString()
         ),
-        el(
+        el( 
           'button', 
           'innerHTML', 
           item.isComplete() ? 'progress' : 'complete', 
@@ -98,8 +139,109 @@ const DomRenderer = class {
       'appendChild', 
       el('button', 'innerHTML', 'addTask','addEventListener', ['click', e=>this.add(item, e.target.previousSibling.value)])
     );
-    children.forEach(v=>{this._render(sub, item, v, depth + 1)});
+    children.forEach(v=>{this._render(sub, item, v, depth + 1)});    
     temp.push(sub);
-    temp.forEach(v=>base.appendChild(v));
+    const sec = el(
+      'section',
+      '@paddingLeft', '40px'
+    );
+    temp.forEach(v=>{  
+      sec.appendChild(v);
+    });        
+    base.appendChild(sec);
+  }
+}
+
+const ConsoleRenderer = class extends Renderer {
+  constructor(list, parent) {
+    super(list, parent);
+    this.result = []
+  }
+
+  _clear() {
+    // console.clear();
+  }
+
+  _render(
+    base, 
+    parent, 
+    {item, children}, 
+    depth,
+    itemIndex
+  ) {    
+    const listStyle = `
+      color: red;
+      font-weight: bold;
+      text-indent: ${depth * 10}px;
+    `;
+  
+    const itemStyle = `
+      font-weight: bold;
+      text-indent: ${depth * 20}px;
+      color: ${item.isComplete() ? '#ccc' : '#000'}
+    `;
+
+    if (children.length || item instanceof TaskList) {      
+      console.log("%c%s", listStyle, `TITLE: ${item._title}`);
+    } else {
+      console.log("%c%s", itemStyle, `ITEM: ${item._title}`);
+    }
+
+    // if (!children.length) console.groupEnd();
+
+    children.forEach((v, index)=>{
+      this._render('', item, v, depth + 1, index);
+    });    
+  }
+
+  _find(list, index = 0, cursorList) {
+    list.forEach((v, i) => {
+      debugger
+      if (i.toString() === cursorList[index]) {  
+        this.result.push(v);
+        this._find(v.children, index + 1, cursorList);
+      };
+    });;
+  }
+
+  _add(depth, title) {
+    const { item, children } = this._list.getResult();
+
+    if (!depth) {
+      item.add(new TaskList(title));
+      this.render();
+      return;
+    }
+
+    const cursorList = depth.split('.');
+
+    this._find(children, 0, cursorList);
+    
+    const curr = this.result.pop();
+
+    curr.item.add(new TaskItem(title));
+    this.render();
+  }
+
+  _toggle(depth) {
+    const { item, children } = this._list.getResult();
+
+    if (!depth) {
+      this.toggle(item);
+      this.render();
+      return;
+    }
+    const cursorList = depth.split('.');
+
+    this._find(children, 0, cursorList);
+
+    const curr = this.result.pop();
+
+    if (curr instanceof TaskList) return;
+
+    this.toggle(curr.item);
+
+    
+    this.render();
   }
 }
